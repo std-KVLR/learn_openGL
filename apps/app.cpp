@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <functional>
 #include <utility>
 #include <glad.h>
 #include <GLFW/glfw3.h>
@@ -34,14 +35,10 @@ protected:
 
         if(shaderFile.is_open())
         {
-            std::string shaderSource;
-            char c;
-            while(shaderFile >> c) {
-                shaderSource.push_back(c);
-            }
-            const char* buffer = shaderSource.c_str();
+            std::string shaderSource ( (std::istreambuf_iterator<char>(shaderFile)), std::istreambuf_iterator<char>());
+            const char* shaderSourceBuf = shaderSource.c_str();
             m_shader = glCreateShader(glCompileStatus);
-            glShaderSource(m_shader, 1, &buffer , NULL);
+            glShaderSource(m_shader, 1, &shaderSourceBuf, NULL);
             glCompileShader(m_shader);
         }
         shaderFile.close();
@@ -105,9 +102,15 @@ void processInput(GLFWwindow* window)
         glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
 
     }
+    else if(glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS){
+        static bool lineMode = false;
+        lineMode = !lineMode;
+        glPolygonMode(GL_FRONT_AND_BACK, (lineMode) ? GL_LINE : GL_FILL);
+    }
     else if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
         glfwSetWindowShouldClose(window, true);
     }
+
 }
 
 GLFWwindow* OpenGlSetup()
@@ -149,18 +152,8 @@ int main()
     auto glWindow = myOpenGL::OpenGlSetup();
 
     if(glWindow != nullptr){
-        float vertices[] =
-        {
-           -0.5f, -0.5f, 0.0f,
-            0.5F, -0.5f, 0.0f,
-            0.0f,  0.5f, 0.0f
-        };
-        unsigned VBO;
-        glGenBuffers(1, &VBO);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-        unsigned int shaderProgram;
-        shaderProgram = glCreateProgram();
+
+        //shaders
         myOpenGL::VertexShader vxsh;
         myOpenGL::FragmentShader fgsh;
         try
@@ -172,8 +165,10 @@ int main()
         catch(myOpenGL::Shader::ShaderCompilationError& err)
         {
             std::cerr << err.what << std::endl;
+            return -1;
         }
 
+        unsigned int shaderProgram = glCreateProgram();
         glAttachShader(shaderProgram, vxsh.get());
         glAttachShader(shaderProgram, fgsh.get());
         glLinkProgram(shaderProgram);
@@ -187,12 +182,60 @@ int main()
         glDeleteShader(vxsh.get());
         glDeleteShader(fgsh.get());
 
+        //setup
+        float vertices[] =
+        {
+           -0.5f, -0.5f, 0.0f,
+            0.5F, -0.5f, 0.0f,
+            0.5f,  0.5f, 0.0f,
+           -0.5f,  0.5f, 0.0f
+        };
+        unsigned indicies[] =
+        {
+            0, 1, 3,
+            1, 2, 3
+        };
+
+        unsigned VBO, VAO, EBO;
+
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
+
+        glBindVertexArray(VAO);
+
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indicies), indicies, GL_STATIC_DRAW);
+
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), static_cast<void*>(0));
         glEnableVertexAttribArray(0);
 
+        //delinking buffer and array
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+
+
+        //rendering
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glUseProgram(shaderProgram);
+        glBindVertexArray(VAO);
+
+        while(!glfwWindowShouldClose(glWindow))
+        {
+            myOpenGL::processInput(glWindow);
+            glClear(GL_COLOR_BUFFER_BIT);
+            //glDrawArrays(GL_TRIANGLES, 0, 3);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            glfwSwapBuffers(glWindow);
+            glfwPollEvents();
+        }
+        glDeleteVertexArrays(1, &VAO);
+        glDeleteBuffers(1, &VBO);
     }
 
    glfwTerminate();
    return 0;
-
 }
