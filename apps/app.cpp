@@ -155,11 +155,13 @@ int main()
 
         //shaders
         myOpenGL::VertexShader vxsh;
-        myOpenGL::FragmentShader fgsh;
+        myOpenGL::FragmentShader fgshOrange;
+        myOpenGL::FragmentShader fgshGold;
         try
         {
             vxsh.compile("../../shaders/vertex_shader1.glsl");
-            fgsh.compile("../../shaders/fragment_shader1.glsl");
+            fgshOrange.compile("../../shaders/fragment_shader1.glsl");
+            fgshGold.compile("../../shaders/fragment_shader2.glsl");
 
         }
         catch(myOpenGL::Shader::ShaderCompilationError& err)
@@ -168,72 +170,105 @@ int main()
             return -1;
         }
 
-        unsigned int shaderProgram = glCreateProgram();
-        glAttachShader(shaderProgram, vxsh.get());
-        glAttachShader(shaderProgram, fgsh.get());
-        glLinkProgram(shaderProgram);
         myOpenGL::GlError err;
-        glGetProgramiv(shaderProgram, GL_LINK_STATUS, &err.successful);
+        unsigned int shaderProgramOrange = glCreateProgram();
+        glAttachShader(shaderProgramOrange, vxsh.get());
+        glAttachShader(shaderProgramOrange, fgshOrange.get());
+        glLinkProgram(shaderProgramOrange);
+        glGetProgramiv(shaderProgramOrange, GL_LINK_STATUS, &err.successful);
         if(!err.successful){
-            glGetProgramInfoLog(shaderProgram, err.maxLogSize, NULL, err.info);
+            glGetProgramInfoLog(shaderProgramOrange, err.maxLogSize, NULL, err.info);
             std::cerr << err.info << std::endl;
         }
-        glUseProgram(shaderProgram);
+        glDeleteShader(fgshOrange.get());
+
+        unsigned int shaderProgramGold = glCreateProgram();
+        glAttachShader(shaderProgramGold, vxsh.get());
+        glAttachShader(shaderProgramGold, fgshGold.get());
+        glLinkProgram(shaderProgramGold);
+        glGetProgramiv(shaderProgramGold, GL_LINK_STATUS, &err.successful);
+        if(!err.successful){
+            glGetProgramInfoLog(shaderProgramGold, err.maxLogSize, NULL, err.info);
+            std::cerr << err.info << std::endl;
+        }
+        glDeleteShader(fgshOrange.get());
+
         glDeleteShader(vxsh.get());
-        glDeleteShader(fgsh.get());
+
 
         //setup
-        float vertices[] =
+        float vertices1[] =
         {
-           -0.5f, -0.5f, 0.0f,
-            0.5F, -0.5f, 0.0f,
-            0.5f,  0.5f, 0.0f,
-           -0.5f,  0.5f, 0.0f
+            -1.0f, -0.5f, 0.0f,
+            -0.5f,  1.0f, 0.0f,
+            -0.0f, -0.5f, 0.0f
+        };
+
+        float vertices2[] =
+        {
+            -0.0f, -0.5f, 0.0f,
+             0.5f,  1.0f, 0.0f,
+             1.0f, -0.5f, 0.0f
         };
         unsigned indicies[] =
         {
-            0, 1, 3,
-            1, 2, 3
+            0, 5, 3,
+            1, 2, 4
         };
 
-        unsigned VBO, VAO, EBO;
+        unsigned VAO1, VAO2, VBO1, VBO2, EBO;
 
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1, &VBO);
-        glGenBuffers(1, &EBO);
+        glGenVertexArrays(1, &VAO1);
+        glGenBuffers(1, &VBO1);
+        glGenVertexArrays(2, &VAO2);
+        glGenBuffers(2, &VBO2);
+        //glGenBuffers(1, &EBO);
 
-        glBindVertexArray(VAO);
+        auto config_buffers = [](unsigned& vao, unsigned& vbo, auto& vert)
+                                {
+                                    glBindVertexArray(vao);
+                                    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+                                    glBufferData(GL_ARRAY_BUFFER, sizeof(vert), vert, GL_STATIC_DRAW);
 
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+                                    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), static_cast<void*>(0));
+                                    glEnableVertexAttribArray(0);
 
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indicies), indicies, GL_STATIC_DRAW);
+                                    glBindBuffer(GL_ARRAY_BUFFER, 0);
+                                    glBindVertexArray(0);
 
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), static_cast<void*>(0));
-        glEnableVertexAttribArray(0);
 
-        //delinking buffer and array
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
+                                };
 
+         config_buffers(VAO1, VBO1, vertices1);
+         config_buffers(VAO2, VBO2, vertices2);
+
+        //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        //glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indicies), indicies, GL_STATIC_DRAW);
 
         //rendering
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glUseProgram(shaderProgram);
-        glBindVertexArray(VAO);
+
+//        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 
         while(!glfwWindowShouldClose(glWindow))
         {
             myOpenGL::processInput(glWindow);
             glClear(GL_COLOR_BUFFER_BIT);
-            //glDrawArrays(GL_TRIANGLES, 0, 3);
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+            glUseProgram(shaderProgramOrange);
+            glBindVertexArray(VAO1);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+
+            glUseProgram(shaderProgramGold);
+            glBindVertexArray(VAO2);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+
             glfwSwapBuffers(glWindow);
             glfwPollEvents();
         }
-        glDeleteVertexArrays(1, &VAO);
-        glDeleteBuffers(1, &VBO);
+        glDeleteVertexArrays(1, &VAO1);
+        glDeleteVertexArrays(1, &VAO2);
+        glDeleteBuffers(1, &VBO1);
+        glDeleteBuffers(1, &VBO2);
     }
 
    glfwTerminate();
