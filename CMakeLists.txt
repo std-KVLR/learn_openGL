@@ -5,6 +5,7 @@ project(
     VERSION 0.1
     LANGUAGES C CXX)
 
+set(CMAKE_BUILD_TYPE Debug)
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 
   # Optionally set things like CMAKE_CXX_STANDARD, CMAKE_POSITION_INDEPENDENT_CODE here
@@ -47,7 +48,9 @@ find_package(OpenGL REQUIRED)
 find_package(glfw3 3.3 REQUIRED)
 
 add_subdirectory(src)
+add_subdirectory(src/QS_OpenGL_lib)
 add_subdirectory(apps)
+
 
 
 

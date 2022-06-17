@@ -3,182 +3,36 @@
 #include <string>
 #include <functional>
 #include <utility>
-#include <glad.h>
+#include <random>
+#include <chrono>
+#include <thread>
+
+#include "QS_OpenGL_lib/qs_ogl_lib.h"
+#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
-
-namespace myOpenGL
-{
-
-struct GlError
-{
-    static constexpr int maxLogSize = 512;
-    int successful;
-    char info[maxLogSize];
-};
-
-class Shader
-{
-public:
-    class ShaderCompilationError {
-    public:
-        const std::string what;
-        ShaderCompilationError(const char* err)
-            :what(err) {}
-
-    };
-
-protected:
-
-    void compile_process(const char* fileName, unsigned glCompileStatus)
-    {
-        std::ifstream shaderFile(fileName, std::ios::binary);
-
-        if(shaderFile.is_open())
-        {
-            std::string shaderSource ( (std::istreambuf_iterator<char>(shaderFile)), std::istreambuf_iterator<char>());
-            const char* shaderSourceBuf = shaderSource.c_str();
-            m_shader = glCreateShader(glCompileStatus);
-            glShaderSource(m_shader, 1, &shaderSourceBuf, NULL);
-            glCompileShader(m_shader);
-        }
-        shaderFile.close();
-    }
-
-    void compile_info()
-    {
-        GlError err;
-
-        glGetShaderiv(m_shader, GL_COMPILE_STATUS, &(err.successful));
-
-        if(!err.successful){
-            glGetShaderInfoLog(m_shader, 512, NULL, err.info);
-            throw ShaderCompilationError(err.info);
-        }
-
-    }
-    unsigned m_shader;
-
-public:
-    virtual void compile(const char* fileName) = 0;
-    virtual unsigned get() { return m_shader; }
-};
-
-
-class VertexShader final: public Shader
-{
-public:
-    VertexShader():Shader(){}
-
-    void compile(const char* fileName)
-    {
-        compile_process(fileName, GL_VERTEX_SHADER);
-        compile_info();
-    }
-};
-
-class FragmentShader final: public Shader
-{
-public:
-    FragmentShader():Shader(){}
-
-    void compile(const char* fileName)
-    {
-        compile_process(fileName, GL_FRAGMENT_SHADER);
-    }
-};
-
-void processInput(GLFWwindow* window)
-{
-    if(glfwGetKey(window, GLFW_KEY_W)){
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-    }
-    else if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    }
-    else if(glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS){
-        glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-    }
-    else if(glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS){
-        glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
-
-    }
-    else if(glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS){
-        static bool lineMode = false;
-        lineMode = !lineMode;
-        glPolygonMode(GL_FRONT_AND_BACK, (lineMode) ? GL_LINE : GL_FILL);
-    }
-    else if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
-        glfwSetWindowShouldClose(window, true);
-    }
-
-}
-
-GLFWwindow* OpenGlSetup()
-{
-
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-    GLFWwindow* window = glfwCreateWindow(800, 600, "OpenGL Window", nullptr, nullptr);
-
-    if(window == nullptr) {
-        std::cerr << "Fail" << std::endl;
-        glfwTerminate();
-        return nullptr;
-    }
-    glfwMakeContextCurrent(window);
-
-    glfwSetFramebufferSizeCallback(window, [](GLFWwindow* window, int w, int h)
-                                            {
-                                                glViewport(0, 0, w, h);
-                                            });
-
-
-    if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)){
-        std::cout << "Fail GLAD init" << std::endl;
-        return nullptr;
-    }
-
-    return window;
-};
-
-}
+#include <glad.h>
 
 
 int main()
 {
-    auto glWindow = myOpenGL::OpenGlSetup();
-
-    if(glWindow != nullptr){
-
+    try
+    {
+        GLFWwindow* glWindow = QSOpenGL::GLFW::setup(3, 3, 800, 600);
         //shaders
-        myOpenGL::VertexShader vxsh;
-        myOpenGL::FragmentShader fgshOrange;
-        myOpenGL::FragmentShader fgshGold;
-        try
-        {
-            vxsh.compile("../../shaders/vertex_shader1.glsl");
-            fgshOrange.compile("../../shaders/fragment_shader1.glsl");
-            fgshGold.compile("../../shaders/fragment_shader2.glsl");
+        QSOpenGL::VertexShader vxsh("../../shaders/vertex_shader1.glsl");
+        QSOpenGL::VertexShader vxshwc("../../shaders/vertex_shaderwc1.glsl");
+        QSOpenGL::FragmentShader fgshOrange("../../shaders/fragment_shader1.glsl");
+        QSOpenGL::FragmentShader fgshGold("../../shaders/fragment_shader2.glsl");
+        QSOpenGL::FragmentShader fgshLSGray("../../shaders/fragment_shader3.glsl");
 
-        }
-        catch(myOpenGL::Shader::ShaderCompilationError& err)
-        {
-            std::cerr << err.what << std::endl;
-            return -1;
-        }
-
-        myOpenGL::GlError err;
         unsigned int shaderProgramOrange = glCreateProgram();
         glAttachShader(shaderProgramOrange, vxsh.get());
         glAttachShader(shaderProgramOrange, fgshOrange.get());
         glLinkProgram(shaderProgramOrange);
-        glGetProgramiv(shaderProgramOrange, GL_LINK_STATUS, &err.successful);
-        if(!err.successful){
-            glGetProgramInfoLog(shaderProgramOrange, err.maxLogSize, NULL, err.info);
-            std::cerr << err.info << std::endl;
+        glGetProgramiv(shaderProgramOrange, GL_LINK_STATUS, &QSOpenGL::GlErrors.successful);
+        if(!QSOpenGL::GlErrors.successful){
+            glGetProgramInfoLog(shaderProgramOrange, QSOpenGL::GlErrors.maxLogSize, NULL, QSOpenGL::GlErrors.info);
+            std::cerr << QSOpenGL::GlErrors.info << std::endl;
         }
         glDeleteShader(fgshOrange.get());
 
@@ -186,14 +40,28 @@ int main()
         glAttachShader(shaderProgramGold, vxsh.get());
         glAttachShader(shaderProgramGold, fgshGold.get());
         glLinkProgram(shaderProgramGold);
-        glGetProgramiv(shaderProgramGold, GL_LINK_STATUS, &err.successful);
-        if(!err.successful){
-            glGetProgramInfoLog(shaderProgramGold, err.maxLogSize, NULL, err.info);
-            std::cerr << err.info << std::endl;
+        glGetProgramiv(shaderProgramGold, GL_LINK_STATUS, &QSOpenGL::GlErrors.successful);
+        if(!QSOpenGL::GlErrors.successful){
+            glGetProgramInfoLog(shaderProgramGold, QSOpenGL::GlErrors.maxLogSize, NULL, QSOpenGL::GlErrors.info);
+            std::cerr << QSOpenGL::GlErrors.info << std::endl;
         }
-        glDeleteShader(fgshOrange.get());
+        glDeleteShader(fgshGold.get());
+
+        unsigned int shaderProgramCustomColor = glCreateProgram();
+        glAttachShader(shaderProgramCustomColor, vxshwc.get());
+        glAttachShader(shaderProgramCustomColor, fgshLSGray.get());
+        glLinkProgram(shaderProgramCustomColor);
+        glGetProgramiv(shaderProgramCustomColor, GL_LINK_STATUS, &QSOpenGL::GlErrors.successful);
+        if(!QSOpenGL::GlErrors.successful){
+            glGetProgramInfoLog(shaderProgramCustomColor, QSOpenGL::GlErrors.maxLogSize, NULL, QSOpenGL::GlErrors.info);
+            std::cerr << QSOpenGL::GlErrors.info << std::endl;
+        }
+        int vertexColorLocation = glGetUniformLocation(shaderProgramCustomColor, "ourColor");
+        if(vertexColorLocation == -1) std::cerr << "Vertex color variable not found" << std::endl;
+        glDeleteShader(fgshLSGray.get());
 
         glDeleteShader(vxsh.get());
+        glDeleteShader(vxshwc.get());
 
 
         //setup
@@ -206,9 +74,10 @@ int main()
 
         float vertices2[] =
         {
-            -0.0f, -0.5f, 0.0f,
-             0.5f,  1.0f, 0.0f,
-             1.0f, -0.5f, 0.0f
+            //location              //colors
+            -0.0f, -0.5f, 0.0f,     1.0f, 0.0f, 0.0f,
+             0.5f,  1.0f, 0.0f,     0.0f, 1.0f, 0.0f,
+             1.0f, -0.5f, 0.0f,     0.0f, 0.0f, 1.0f
         };
         unsigned indicies[] =
         {
@@ -240,7 +109,30 @@ int main()
                                 };
 
          config_buffers(VAO1, VBO1, vertices1);
-         config_buffers(VAO2, VBO2, vertices2);
+         //config_buffers(VAO2, VBO2, vertices2);
+         glBindVertexArray(VAO2);
+         glBindBuffer(GL_ARRAY_BUFFER, VBO2);
+         glBufferData(GL_ARRAY_BUFFER, sizeof(vertices2), vertices2, GL_STATIC_DRAW);
+         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), static_cast<void*>(0));
+         glEnableVertexAttribArray(0);
+         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), reinterpret_cast<void*>(sizeof(float)*3));
+         glEnableVertexAttribArray(1);
+
+         glBindBuffer(GL_ARRAY_BUFFER, 0);
+         glBindVertexArray(0);
+         QSOpenGL::VertexShader vxsh2A("../../shaders/vertex_shader2.glsl");
+         QSOpenGL::FragmentShader fgsh4("../../shaders/fragment_shader4.glsl");
+         unsigned int shaderProgram2A = glCreateProgram();
+         glAttachShader(shaderProgram2A, vxsh2A.get());
+         glAttachShader(shaderProgram2A, fgsh4.get());
+         glLinkProgram(shaderProgram2A);
+         glGetProgramiv(shaderProgram2A, GL_LINK_STATUS, &QSOpenGL::GlErrors.successful);
+         if(!QSOpenGL::GlErrors.successful){
+             glGetProgramInfoLog(shaderProgram2A, QSOpenGL::GlErrors.maxLogSize, NULL, QSOpenGL::GlErrors.info);
+             std::cerr << QSOpenGL::GlErrors.info << std::endl;
+         }
+         glDeleteShader(fgsh4.get());
+         glDeleteShader(vxsh2A.get());
 
         //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
         //glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indicies), indicies, GL_STATIC_DRAW);
@@ -249,16 +141,18 @@ int main()
 
 //        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 
+
+
         while(!glfwWindowShouldClose(glWindow))
         {
-            myOpenGL::processInput(glWindow);
+            QSOpenGL::GLFW::processInput(glWindow);
             glClear(GL_COLOR_BUFFER_BIT);
 
-            glUseProgram(shaderProgramOrange);
+            glUseProgram(shaderProgramGold);
             glBindVertexArray(VAO1);
             glDrawArrays(GL_TRIANGLES, 0, 3);
 
-            glUseProgram(shaderProgramGold);
+            glUseProgram(shaderProgram2A);
             glBindVertexArray(VAO2);
             glDrawArrays(GL_TRIANGLES, 0, 3);
 
@@ -269,6 +163,17 @@ int main()
         glDeleteVertexArrays(1, &VAO2);
         glDeleteBuffers(1, &VBO1);
         glDeleteBuffers(1, &VBO2);
+
+    }
+    catch(std::runtime_error& err)
+    {
+        std::cerr << err.what() << std::endl;
+        return -1;
+    }
+    catch(...)
+    {
+        std:: cerr << "UNKNOWN ERROR..." << std::endl;
+        return -1;
     }
 
    glfwTerminate();
