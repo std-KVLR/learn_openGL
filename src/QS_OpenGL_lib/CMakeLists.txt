@@ -1,7 +1,8 @@
-set(HEADER_LIST "${OpenGLtest_SOURCE_DIR}/include/QS_OpenGL_lib/qs_ogl_lib.h")
+set(HEADER_LIST "${OpenGLtest_SOURCE_DIR}/include/QS_OpenGL_lib/qs_ogl_lib.h"
+                "${OpenGLtest_SOURCE_DIR}/include/QS_OpenGL_lib/qs_ogl_lib_shader.h"
+                "${OpenGLtest_SOURCE_DIR}/include/QS_OpenGL_lib/qs_ogl_lib_program.h")
 
-
-add_library(qsOGL qs_ogl_lib.cpp ${HEADER_LIST})
+add_library(qsOGL qs_ogl_lib.cpp qs_ogl_lib_program.cpp qs_ogl_lib_shader.cpp ${HEADER_LIST})
 
 target_link_libraries(qsOGL glad glfw OpenGL::GL ${CMAKE_DL_LIBS})
 

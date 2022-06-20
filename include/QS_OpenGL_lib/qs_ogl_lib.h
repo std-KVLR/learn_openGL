@@ -9,15 +9,12 @@
 #include <GLFW/glfw3.h>
 #include <glad.h>
 
+#include "qs_ogl_lib_shader.h"
+#include "qs_ogl_lib_program.h"
 
 namespace QSOpenGL
 {
 
-class ShaderCompilationError: public std::runtime_error {
-public:
-    ShaderCompilationError(const char* err)
-        :std::runtime_error(err) {}
-};
 
 struct
 {
@@ -28,47 +25,6 @@ struct
 }GlErrors;
 
 
-
-class Shader
-{
-public:
-    enum ShaderType {GL_fragment_shader = GL_FRAGMENT_SHADER, GL_vertex_shader = GL_VERTEX_SHADER};
-
-    Shader() = default;
-    ~Shader(){}
-
-    void compile(const char* fileName, ShaderType glCompileStatus);
-
-    unsigned get() const { return m_shader;}
-
-protected:
-    Shader(const char* fileName, const ShaderType type)
-    {
-        compile(fileName, type);
-    }
-
-    unsigned m_shader;
-
-};
-
-
-class VertexShader final: public Shader
-{
-public:
-    VertexShader(const char* fileName)
-        :Shader(fileName, ShaderType::GL_vertex_shader){}
-private:
-    void compile(const char* fileName, ShaderType glCompileStatus);
-};
-
-class FragmentShader final: public Shader
-{
-public:
-    FragmentShader(const char* fileName)
-        :Shader(fileName, ShaderType::GL_fragment_shader){}
-private:
-    void compile(const char* fileName, ShaderType glCompileStatus);
-};
 
 
 namespace GLFW
@@ -87,7 +43,6 @@ GLFWwindow* setup(const size_t versionMajor, const size_t versionMinor, size_t w
 float gen_random_color(float min, float max);
 
 };
-
 
 }
 
